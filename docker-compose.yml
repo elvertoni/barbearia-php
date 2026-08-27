@@ -1,0 +1,48 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: barbearia-app
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: barbearia
+      DB_USER: barbearia_user
+      DB_PASS: barbearia_pass
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - barbearia-net
+
+  db:
+    image: mysql:8.0
+    container_name: barbearia-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: barbearia
+      MYSQL_USER: barbearia_user
+      MYSQL_PASSWORD: barbearia_pass
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - barbearia-net
+
+volumes:
+  db-data:
+
+networks:
+  barbearia-net:
+    driver: bridge
