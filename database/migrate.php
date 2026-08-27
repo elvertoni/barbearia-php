@@ -55,16 +55,16 @@ foreach ($files as $file) {
     }
 
     try {
-        $pdo->beginTransaction();
         $pdo->exec($sql);
         $pdo->prepare('INSERT INTO migrations (filename) VALUES (:filename)')
             ->execute(['filename' => $filename]);
-        $pdo->commit();
 
         echo "  [RUN] {$filename} ✓\n";
         $pending++;
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         echo "  [FAIL] {$filename}: {$e->getMessage()}\n";
         exit(1);
     }

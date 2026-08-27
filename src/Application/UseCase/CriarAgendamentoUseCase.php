@@ -84,7 +84,11 @@ final class CriarAgendamentoUseCase
         }
 
         // 4. Transação com locking para garantir concorrência (Regra 5)
-        $this->pdo->beginTransaction();
+        $iniciouTransacao = false;
+        if (!$this->pdo->inTransaction()) {
+            $this->pdo->beginTransaction();
+            $iniciouTransacao = true;
+        }
 
         try {
             // 4a. Regra 1+4: Verificar conflito de barbeiro
@@ -120,11 +124,15 @@ final class CriarAgendamentoUseCase
 
             $agendamento = $this->agendamentoRepo->salvar($agendamento);
 
-            $this->pdo->commit();
+            if ($iniciouTransacao && $this->pdo->inTransaction()) {
+                $this->pdo->commit();
+            }
 
             return $agendamento;
         } catch (\Throwable $e) {
-            $this->pdo->rollBack();
+            if ($iniciouTransacao && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }

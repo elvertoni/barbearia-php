@@ -1,7 +1,12 @@
 FROM php:8.2-apache
 
-# Instalar extensões PHP necessárias
-RUN docker-php-ext-install pdo pdo_mysql
+# Instalar pacotes de sistema necessários (git, unzip, libzip-dev)
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql zip \
+    && rm -rf /var/lib/apt/lists/*
 
 # Habilitar mod_rewrite para o front controller
 RUN a2enmod rewrite

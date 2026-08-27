@@ -33,7 +33,11 @@ final class CancelarAgendamentoUseCase
      */
     public function executar(int $agendamentoId): array
     {
-        $this->pdo->beginTransaction();
+        $iniciouTransacao = false;
+        if (!$this->pdo->inTransaction()) {
+            $this->pdo->beginTransaction();
+            $iniciouTransacao = true;
+        }
 
         try {
             $agendamento = $this->agendamentoRepo->buscarPorId($agendamentoId);
@@ -55,14 +59,18 @@ final class CancelarAgendamentoUseCase
                 $agendamento->servicoId,
             );
 
-            $this->pdo->commit();
+            if ($iniciouTransacao && $this->pdo->inTransaction()) {
+                $this->pdo->commit();
+            }
 
             return [
                 'agendamento' => $agendamento,
                 'fila_sinalizada' => $itensFila,
             ];
         } catch (\Throwable $e) {
-            $this->pdo->rollBack();
+            if ($iniciouTransacao && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }

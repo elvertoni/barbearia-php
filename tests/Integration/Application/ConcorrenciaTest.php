@@ -23,17 +23,25 @@ final class ConcorrenciaTest extends TestCase
     {
         $this->pdo = Connection::create();
 
-        // Limpar dados de teste anteriores
-        $this->pdo->exec("DELETE FROM agendamentos WHERE criado_em LIKE '2025-01-06%'");
-
         // Garantir dados de seed existem
         $this->seedDadosTeste();
+
+        // Limpar agendamentos do barbeiro de concorrência antes de iniciar o teste
+        $this->pdo->exec("
+            DELETE FROM agendamentos 
+            WHERE hora_inicio >= '2025-01-06 00:00:00' 
+              AND hora_inicio <= '2025-01-06 23:59:59'
+        ");
     }
 
     protected function tearDown(): void
     {
         // Limpar dados de teste
-        $this->pdo->exec("DELETE FROM agendamentos WHERE criado_em LIKE '2025-01-06%'");
+        $this->pdo->exec("
+            DELETE FROM agendamentos 
+            WHERE hora_inicio >= '2025-01-06 00:00:00' 
+              AND hora_inicio <= '2025-01-06 23:59:59'
+        ");
     }
 
     /**
