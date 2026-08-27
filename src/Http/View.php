@@ -21,9 +21,9 @@ final class View
      * Renderiza um template e retorna o HTML.
      *
      * @param string $template Nome do template (ex: 'barbeiros/index')
-     * @param array $data Dados a passar para o template
+     * @param array $_viewVariables Dados a passar para o template
      */
-    public static function render(string $template, array $data = []): string
+    public static function render(string $template, array $_viewVariables = []): string
     {
         $filePath = self::$basePath . '/' . $template . '.php';
 
@@ -32,7 +32,7 @@ final class View
         }
 
         // Extrair variáveis no escopo do template
-        extract($data, EXTR_SKIP);
+        extract($_viewVariables, EXTR_OVERWRITE);
 
         ob_start();
         require $filePath;
@@ -65,7 +65,13 @@ final class View
  * Helper global para escapar output HTML (prevenir XSS).
  * Deve ser usado em TODA variável renderizada em templates.
  */
-function e(?string $value): string
+function e(mixed $value): string
 {
-    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
+    if ($value === null) {
+        return '';
+    }
+    if (is_scalar($value) || (is_object($value) && method_exists($value, '__toString'))) {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
+    return htmlspecialchars(json_encode($value, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 }
