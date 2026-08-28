@@ -38,6 +38,10 @@ final class View
         require $filePath;
         $content = ob_get_clean();
 
+        // Injeta o campo CSRF em todo <form method="POST"> automaticamente,
+        // para que nenhuma view precise lembrar de fazê-lo manualmente.
+        $content = self::injetarCsrf($content);
+
         // Se há layout, envolver o conteúdo
         if (self::$layoutPath !== '') {
             $layoutFile = self::$basePath . '/layouts/' . self::$layoutPath . '.php';
@@ -58,6 +62,25 @@ final class View
     public static function layout(string $layout): void
     {
         self::$layoutPath = $layout;
+    }
+
+    /**
+     * Insere <input type="hidden" name="_token"> logo após cada <form method="POST">.
+     * Forms que já tenham um campo _token não são alterados.
+     */
+    private static function injetarCsrf(string $html): string
+    {
+        return preg_replace_callback(
+            '/<form\b[^>]*\bmethod\s*=\s*("|\')post\1[^>]*>/i',
+            static function (array $m): string {
+                if (stripos($m[0], 'name="_token"') !== false) {
+                    return $m[0];
+                }
+
+                return $m[0] . csrf_field();
+            },
+            $html,
+        ) ?? $html;
     }
 }
 

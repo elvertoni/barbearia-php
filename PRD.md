@@ -2,18 +2,18 @@
 
 > Documento de especificação para execução por agente de IA de programação (Claude Code, Codex, ou similar). Este documento é a **fonte única de verdade** do projeto. Qualquer decisão de implementação que conflite com este documento deve ser sinalizada antes de prosseguir, nunca decidida silenciosamente pelo agente.
 
+> **Mudança de direção (2026-08-28):** o projeto deixou de ser peça de portfólio e passou a ser um **produto SaaS real de barbearia**, inspirado no AppBarber (site + app), construído por módulos. Ver `ROADMAP.md`. A stack **PHP puro sem framework** foi mantida por decisão. As regras de conflito de agendamento (`<regras_de_negocio_criticas>`) continuam sendo o núcleo técnico e permanecem intocadas.
+
 <role_e_contexto>
 Você atua como **engenheiro de software sênior especialista em PHP puro (sem framework), com domínio profundo de arquitetura de aplicações web, modelagem de dados relacionais e engenharia de concorrência**.
 
-Você está construindo uma peça de portfólio técnico. O avaliador final é um recrutador técnico e/ou tech lead que vai revisar o código-fonte, não apenas o produto rodando. Isso significa: **clareza de código, decisões de arquitetura explícitas e testes automatizados valem mais que quantidade de telas.**
-
-Você NÃO deve otimizar para "parecer completo". Você deve otimizar para "provar competência de engenharia" em um escopo deliberadamente pequeno.
+Você está construindo um produto SaaS de gestão para barbearia, entregue por módulos incrementais. Cada módulo deve manter o mesmo rigor de arquitetura em camadas, testes automatizados e decisões explícitas — o valor do produto está na profundidade e corretude, não na quantidade de telas por entrega.
 </role_e_contexto>
 
 <objetivo_do_projeto>
-Construir um sistema de agendamento de serviços para barbearia cuja regra de negócio central — conflito de dois recursos simultâneos (barbeiro E cadeira) — seja resolvida de forma correta, eficiente e testável.
+Construir um sistema de gestão para barbearia (agenda, equipe, comanda/financeiro, fidelidade, notificações, estoque, relatórios) cuja regra de negócio central — conflito de dois recursos simultâneos (barbeiro E cadeira) — seja resolvida de forma correta, eficiente e testável, e sobre a qual os demais módulos são construídos.
 
-O sucesso deste projeto NÃO é medido por "quantas funcionalidades tem". É medido por: a regra de conflito está correta em todos os casos de borda, o código é organizado em camadas com responsabilidades claras, e existe suíte de testes automatizados que prova isso.
+Sucesso é medido por: a regra de conflito correta em todos os casos de borda; cada módulo em camadas com responsabilidades claras; suíte de testes automatizados que prova o comportamento; e um produto efetivamente usável por uma barbearia real.
 </objetivo_do_projeto>
 
 <stack_tecnica_obrigatoria>
@@ -27,7 +27,7 @@ O sucesso deste projeto NÃO é medido por "quantas funcionalidades tem". É med
 - Docker Compose para ambiente de desenvolvimento reprodutível (para o avaliador rodar com um comando)
 
 <justificativa_arquitetural>
-A ausência de framework é proposital: o objetivo é demonstrar que você entende o que Laravel resolve por baixo (DI container, router, ORM, migrations) construindo versões enxutas e corretas dessas peças. Isso deve ficar explícito no README.
+A ausência de framework é uma decisão de projeto mantida mesmo após a virada para produto: as peças que Laravel/Symfony resolveriam por baixo (DI container, router, ORM, migrations, sessão, middleware) são construídas à mão, de forma enxuta e correta. Isso deve ficar explícito no README.
 </justificativa_arquitetural>
 </stack_tecnica_obrigatoria>
 
@@ -122,7 +122,7 @@ Regras arquiteturais mandatórias:
 </arquitetura_obrigatoria>
 
 <escopo_funcional>
-Implementar, nesta ordem de prioridade:
+Base já entregue (fundação sobre a qual os módulos do `ROADMAP.md` são construídos):
 1. CRUD de barbeiros, cadeiras, serviços, clientes (simples, sem regra especial)
 2. Cadastro de horário de trabalho por barbeiro
 3. Criação de agendamento com as 7 regras de negócio acima aplicadas
@@ -132,18 +132,28 @@ Implementar, nesta ordem de prioridade:
 7. Interface web mínima (HTML + CSS simples, pode ser sem JS framework — vanilla JS se necessário) apenas para demonstrar o fluxo, sem investir tempo em design
 </escopo_funcional>
 
-<fora_de_escopo>
-Não implementar nada abaixo, mesmo que pareça rápido. Cada item aqui é uma decisão deliberada de foco, mencione isso no README:
-- Autenticação/login de múltiplos usuários (single admin hardcoded basta)
-- Notificação real por e-mail/SMS/WhatsApp
-- Pagamento online
-- Multi-loja / múltiplas unidades
-- Relatórios e dashboards
-- App mobile
-</fora_de_escopo>
+<escopo_por_modulo>
+O produto é entregue por módulos incrementais (ver `ROADMAP.md`). Não antecipe módulos futuros dentro de um módulo em andamento; não deixe um módulo pela metade para começar outro.
+
+1. **Auth + multi-profissional** — sessão nativa, perfis (dono, recepção, barbeiro, cliente), RBAC via middleware próprio, CSRF, rate limit de login, barbeiro com agenda própria. **(implementado)**
+2. Portal do cliente + booking público self-service.
+3. Comanda de atendimento + financeiro (fluxo de caixa, taxa de cartão) + comissão de profissional.
+4. Notificações (lembrete, confirmação, aniversário) via fila assíncrona.
+5. Fidelidade (pontos, clube VIP, cashback).
+6. Estoque (custo, validade, alertas).
+7. Relatórios e dashboards gerenciais.
+8. Multi-unidade.
+9. App mobile (PWA primeiro).
+</escopo_por_modulo>
+
+<fora_de_escopo_por_ora>
+Não implementar antes do módulo correspondente no roadmap:
+- Integração real com gateway de pagamento (só o módulo 3 modela o financeiro; cobrança real vem depois).
+- App mobile nativo (o roadmap prevê PWA primeiro).
+</fora_de_escopo_por_ora>
 
 <requisitos_nao_funcionais>
-- Segurança: prepared statements em 100% das queries; hashing de senha com `password_hash` (bcrypt/argon2) se houver login; nunca commitar `.env`; escapar output HTML (evitar XSS) em toda variável renderizada.
+- Segurança: prepared statements em 100% das queries; hashing de senha com `password_hash` (PASSWORD_DEFAULT); sessão nativa com cookie `HttpOnly`/`SameSite=Lax` (+`Secure` em prod); token CSRF validado em todo POST/PUT/DELETE; rate limit de login; nunca commitar `.env`; escapar output HTML (evitar XSS) em toda variável renderizada.
 - Testes: cobertura obrigatória (não opcional) para a lógica de conflito de horário, incluindo estes casos de borda explícitos: sobreposição total, sobreposição parcial no início, sobreposição parcial no fim, horários adjacentes (fim de um = início do outro, deve ser permitido), mesmo barbeiro horários diferentes cadeiras iguais, cadeira incompatível com serviço.
 - Documentação: README com diagrama de arquitetura (pode ser texto/ASCII), decisões técnicas justificadas, instruções de setup com Docker em um único comando.
 - Git: commits pequenos e semânticos (`feat:`, `fix:`, `test:`, `docs:`), nunca um commit único gigante.

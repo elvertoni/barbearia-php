@@ -1,10 +1,16 @@
-# 💈 Sistema de Agendamento para Barbearia
+# 💈 Sistema de Gestão para Barbearia
 
-Sistema de agendamento de serviços para barbearia em **PHP puro (sem framework)**, construído como peça de portfólio técnico que demonstra competência de engenharia em escopo deliberadamente pequeno.
+Sistema de gestão para barbearia em **PHP puro (sem framework)**, inspirado no AppBarber
+(web + app) e entregue por módulos incrementais. Ver [`ROADMAP.md`](ROADMAP.md).
+
+O núcleo técnico é a regra de conflito de agendamento — barbeiro **e** cadeira consumidos
+ao mesmo tempo, verificada em SQL com lock de concorrência — sobre a qual os demais
+módulos são construídos.
 
 ## 🎯 Por que sem framework?
 
-A ausência de framework é **proposital**. O objetivo é demonstrar que entendo o que Laravel, Symfony e similares resolvem por baixo, construindo versões enxutas e corretas dessas peças:
+A ausência de framework é uma **decisão de projeto mantida**. As peças que Laravel, Symfony
+e similares resolvem por baixo são construídas à mão, de forma enxuta e correta:
 
 | Conceito de Framework | Implementação Própria |
 |---|---|
@@ -14,6 +20,9 @@ A ausência de framework é **proposital**. O objetivo é demonstrar que entendo
 | ORM/Query Builder | PDO puro com prepared statements em repositórios |
 | Migrations (Doctrine) | SQL puro versionado + script runner (`database/migrate.php`) |
 | Template Engine (Blade) | PHP nativo com helper `e()` para XSS |
+| Sessão / Auth (Laravel Auth) | `src/Http/Auth/SessaoAtual.php` sobre `$_SESSION` nativa |
+| Middleware (pipeline HTTP) | `src/Http/Middleware/` + pipeline por rota no `Router` |
+| Proteção CSRF | token na sessão + injeção automática no `View` + checagem no dispatch |
 
 ## 🏗 Arquitetura
 
@@ -79,13 +88,16 @@ Criados conscientemente para que a query de conflito escale:
 docker compose up -d --build
 ```
 
-Depois, rode as migrations:
+Depois, aplique o schema e crie o usuário dono:
 
 ```bash
 docker compose exec app php database/migrate.php
+docker compose exec app php database/seed.php
 ```
 
-Acesse: **http://localhost:8080**
+O `seed.php` lê `ADMIN_NOME` / `ADMIN_EMAIL` / `ADMIN_SENHA` (definidos no
+`docker-compose.yml` para desenvolvimento). Acesse **http://localhost:8080** e entre com
+essas credenciais.
 
 ## 🧪 Testes
 
@@ -113,6 +125,20 @@ docker compose exec app vendor/bin/phpunit --testsuite Integration
 | Fora da janela de trabalho | ❌ Falha | `testForaDaJanelaDeTrabalhoFalha` |
 | Concorrência (dupla reserva) | ❌ 1 falha | `testDuasReservasSimultaneasApenasUmaSucede` |
 
+## 🔐 Autenticação e perfis (Módulo 1)
+
+| Perfil | Acesso |
+|---|---|
+| **dono** | Tudo, inclusive gestão de usuários (`/usuarios`) |
+| **recepcao** | Agenda, cadastros, fila de espera |
+| **barbeiro** | Só a própria agenda (`/minha-agenda`); transita status apenas dos próprios agendamentos |
+| **cliente** | Portal self-service (Módulo 2) |
+
+- Sessão nativa PHP, cookie `HttpOnly`/`SameSite=Lax` (+`Secure` com `APP_ENV=prod`).
+- Senha com `password_hash`; rate limit de 5 falhas / 15 min por e-mail.
+- CSRF em todo POST/PUT/DELETE — o campo `_token` é injetado automaticamente pelo `View`.
+- RBAC por pipeline de middleware registrada por rota no `Router`.
+
 ## 📋 Decisões Técnicas
 
 | Decisão | Justificativa |
@@ -123,16 +149,24 @@ docker compose exec app vendor/bin/phpunit --testsuite Integration
 | **UTC no banco** | Datas em UTC, conversão na apresentação para `America/Sao_Paulo`. |
 | **DI manual** | Sem container de framework — composição explícita em `index.php`. |
 
-## 🚫 Fora de Escopo (deliberado)
+## 🗺 Módulos
 
-- Autenticação/login multi-usuário
-- Notificações (e-mail/SMS/WhatsApp)
-- Pagamento online
-- Multi-loja
-- Relatórios/dashboards
-- App mobile
+O produto é entregue por módulos — detalhes em [`ROADMAP.md`](ROADMAP.md).
 
-Cada item é uma decisão consciente de foco, não uma limitação técnica.
+| # | Módulo | Status |
+|---|---|---|
+| — | Fundação: agenda + regra de conflito + camada HTTP | ✅ |
+| 1 | Auth + multi-profissional (perfis, RBAC, CSRF, rate limit, agenda do barbeiro) | ✅ |
+| 2 | Portal do cliente + booking público | ⏳ |
+| 3 | Comanda + financeiro + comissão | ⏳ |
+| 4 | Notificações (fila assíncrona) | ⏳ |
+| 5 | Fidelidade (pontos / clube VIP) | ⏳ |
+| 6 | Estoque | ⏳ |
+| 7 | Relatórios e dashboards | ⏳ |
+| 8 | Multi-unidade | ⏳ |
+| 9 | App mobile (PWA primeiro) | ⏳ |
+
+Não implementado antes do módulo correspondente: gateway de pagamento real, app nativo.
 
 ## 📁 Stack
 

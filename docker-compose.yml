@@ -14,6 +14,10 @@ services:
       DB_NAME: barbearia
       DB_USER: barbearia_user
       DB_PASS: barbearia_pass
+      APP_ENV: dev
+      ADMIN_NOME: "Dono da Barbearia"
+      ADMIN_EMAIL: dono@barbearia.local
+      ADMIN_SENHA: trocar-esta-senha
     depends_on:
       db:
         condition: service_healthy

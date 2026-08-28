@@ -18,10 +18,11 @@ final class PdoBarbeiroRepository implements BarbeiroRepositoryInterface
     public function salvar(Barbeiro $barbeiro): Barbeiro
     {
         $stmt = $this->pdo->prepare('
-            INSERT INTO barbeiros (nome, ativo) VALUES (:nome, :ativo)
+            INSERT INTO barbeiros (nome, usuario_id, ativo) VALUES (:nome, :usuario_id, :ativo)
         ');
         $stmt->execute([
             'nome' => $barbeiro->nome,
+            'usuario_id' => $barbeiro->usuarioId,
             'ativo' => $barbeiro->ativo ? 1 : 0,
         ]);
 
@@ -32,6 +33,15 @@ final class PdoBarbeiroRepository implements BarbeiroRepositoryInterface
     {
         $stmt = $this->pdo->prepare('SELECT * FROM barbeiros WHERE id = :id');
         $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+
+        return $row ? $this->hidratar($row) : null;
+    }
+
+    public function buscarPorUsuarioId(int $usuarioId): ?Barbeiro
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM barbeiros WHERE usuario_id = :usuario_id');
+        $stmt->execute(['usuario_id' => $usuarioId]);
         $row = $stmt->fetch();
 
         return $row ? $this->hidratar($row) : null;
@@ -52,10 +62,11 @@ final class PdoBarbeiroRepository implements BarbeiroRepositoryInterface
     public function atualizar(Barbeiro $barbeiro): void
     {
         $stmt = $this->pdo->prepare('
-            UPDATE barbeiros SET nome = :nome, ativo = :ativo WHERE id = :id
+            UPDATE barbeiros SET nome = :nome, usuario_id = :usuario_id, ativo = :ativo WHERE id = :id
         ');
         $stmt->execute([
             'nome' => $barbeiro->nome,
+            'usuario_id' => $barbeiro->usuarioId,
             'ativo' => $barbeiro->ativo ? 1 : 0,
             'id' => $barbeiro->id,
         ]);
@@ -72,6 +83,7 @@ final class PdoBarbeiroRepository implements BarbeiroRepositoryInterface
         return new Barbeiro(
             id: (int) $row['id'],
             nome: $row['nome'],
+            usuarioId: $row['usuario_id'] !== null ? (int) $row['usuario_id'] : null,
             ativo: (bool) $row['ativo'],
         );
     }

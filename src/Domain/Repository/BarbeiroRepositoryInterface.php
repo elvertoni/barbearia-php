@@ -12,6 +12,8 @@ interface BarbeiroRepositoryInterface
 
     public function buscarPorId(int $id): ?Barbeiro;
 
+    public function buscarPorUsuarioId(int $usuarioId): ?Barbeiro;
+
     /** @return Barbeiro[] */
     public function listarAtivos(): array;
 

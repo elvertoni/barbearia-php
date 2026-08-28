@@ -8,10 +8,12 @@ use App\Application\UseCase\CancelarAgendamentoUseCase;
 use App\Application\UseCase\CriarAgendamentoUseCase;
 use App\Application\UseCase\ListarAgendaPorBarbeiroDiaUseCase;
 use App\Application\UseCase\TransitarStatusUseCase;
+use App\Domain\Enum\PerfilUsuario;
 use App\Domain\Enum\StatusAgendamento;
 use App\Domain\Repository\BarbeiroRepositoryInterface;
 use App\Domain\Repository\ClienteRepositoryInterface;
 use App\Domain\Repository\ServicoRepositoryInterface;
+use App\Http\Auth\SessaoAtual;
 use App\Http\Request;
 use App\Http\Response;
 use App\Http\View;
@@ -32,6 +34,7 @@ final class AgendamentoController
         private readonly BarbeiroRepositoryInterface $barbeiroRepo,
         private readonly ClienteRepositoryInterface $clienteRepo,
         private readonly ServicoRepositoryInterface $servicoRepo,
+        private readonly SessaoAtual $sessao,
     ) {
     }
 
@@ -128,14 +131,24 @@ final class AgendamentoController
         $id = (int) $request->param('id');
         $novoStatus = $request->input('status', '');
 
+        // Barbeiro só transita status dos próprios agendamentos.
+        $restritoBarbeiroId = null;
+        $destino = '/agendamentos';
+
+        if ($this->sessao->perfil() === PerfilUsuario::Barbeiro) {
+            $barbeiro = $this->barbeiroRepo->buscarPorUsuarioId((int) $this->sessao->usuarioId());
+            $restritoBarbeiroId = $barbeiro?->id;
+            $destino = '/minha-agenda';
+        }
+
         try {
             $status = StatusAgendamento::from($novoStatus);
-            $this->transitarUseCase->executar($id, $status);
+            $this->transitarUseCase->executar($id, $status, $restritoBarbeiroId);
 
-            return (new Response())->redirect('/agendamentos?sucesso=Status+atualizado+para+' . urlencode($status->value));
+            return (new Response())->redirect($destino . '?sucesso=Status+atualizado+para+' . urlencode($status->value));
         } catch (\Throwable $e) {
             $erro = urlencode($e->getMessage());
-            return (new Response())->redirect("/agendamentos?erro={$erro}");
+            return (new Response())->redirect("{$destino}?erro={$erro}");
         }
     }
 }
